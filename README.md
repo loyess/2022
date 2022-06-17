@@ -5,7 +5,7 @@
 
 ## Installation
 ```
-curl -O https://github.com/loyess/2022/raw/main/2022script.sh
+curl -OL https://github.com/loyess/2022/raw/main/2022script.sh
 chmod +x 2022script.sh
 ./2022script.sh
 ```
