@@ -20,6 +20,22 @@ export SSRUST_VERSION='1.15.0-alpha.5'
 ```
 Note: Env variables are specified before the script is run. `eg: export SSRUST_ROOT_DIR='/etc/rustss2022' && ./2022script.sh` If the `SSRUST_ROOT_DIR` path is not specified, it will be installed in the `rustss2022` directory under the current path.
 
+## Encryption method
+```
+Shadowsocks-rust Ciphers: 
+
+  1. none
+  2. plain
+  3. aes-256-gcm
+  4. aes-128-gcm
+  5. chacha20-ietf-poly1305
+  6. 2022-blake3-aes-128-gcm
+  7. 2022-blake3-aes-256-gcm
+  8. 2022-blake3-chacha20-poly1305
+
+Please select an encryption method (deafult: 2022-blake3-aes-128-gcm):
+```
+
 ## Help information
 ```
 root@debian:~# ./2022script.sh -h
