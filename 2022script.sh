@@ -380,7 +380,7 @@ update_script(){
     local API_URL LATEST_VERSION CURRENT_VERSION
 
     API_URL="https://api.github.com/repos/loyess/2022/tags"
-    LATEST_VERSION=$(curl -s -m 10 ${API_URL} | grep 'name' | cut -d\" -f4 | head -n 1 | sed 's/v//g;s/.//g')
+    LATEST_VERSION=$(curl -s -m 10 ${API_URL} | grep 'name' | cut -d\" -f4 | head -n 1 | sed 's/v//g;s/\.//g')
     [ -z "${LATEST_VERSION}" ] && error "The network connection timed out and failed to obtain the ss-rust version number." && exit 1
     CURRENT_VERSION=${VERSION//./}
     if [[ ${LATEST_VERSION} > ${CURRENT_VERSION} ]]; then
