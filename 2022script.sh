@@ -402,48 +402,65 @@ update_script(){
 }
 
 
-action=${1:-"-i"}
-case ${action} in
+if [[ $# -eq 0 ]]; then
+    install_ssrust
+fi
+while [[ $# -ge 1 ]]; do
+  case $1 in
     -i|--install)
-        install_ssrust
-        ;;
+      shift
+      install_ssrust
+      ;;
     -r|--remove)
-        remove_ssrust
-        ;;
+      shift
+      remove_ssrust
+      ;;
     -f|--cover)
-        cover_install
-        ;;
+      shift
+      cover_install
+      ;;
     -u|--update-script)
-        update_script
-        ;;
+      shift
+      update_script
+      ;;
     -l|--log)
-        log_cat
-        ;;
+      shift
+      log_cat
+      ;;
     -c|--config)
-        config_cat
-        ;;
+      shift
+      config_cat
+      ;;
     -s|--url-scheme)
-        url_scheme_cat
-        ;;
+      shift
+      url_scheme_cat
+      ;;
     -st|--start)
-        start_cmd
-        ;;
+      shift
+      start_cmd
+      ;;
     -sp|--stop)
-        stop_cmd
-        ;;
+      shift
+      stop_cmd
+      ;;
     -rt|--restart)
-        restart_cmd
-        ;;
+      shift
+      restart_cmd
+      ;;
     -ss|--status)
-        status_cmd
-        ;;
+      shift
+      status_cmd
+      ;;
     -v|--version)
-        version_info
-        ;;
+      shift
+      version_info
+      ;;
     -h|--help)
-        usage
-        ;;
+      shift
+      usage
+      ;;
     *)
-        usage && exit 1
-        ;;
-esac
+      usage && exit 1
+      ;;
+  esac
+done
