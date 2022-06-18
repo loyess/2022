@@ -3,11 +3,25 @@
 ![](https://img.shields.io/github/forks/loyess/2022.svg) 
 ![](https://img.shields.io/github/license/loyess/2022.svg)  
 
+## Dependencies
+```
+# Debian
+apt install -y wget curl
+
+# CentOS
+apt install -y wget curl
+```
+
 ## Installation
 ```
 curl -OL https://github.com/loyess/2022/raw/main/2022script.sh
 chmod +x 2022script.sh
 ./2022script.sh
+```
+
+## Uninstall
+```
+./2022script.sh --remove
 ```
 
 ## Env variables
@@ -50,17 +64,20 @@ Usage:
   ./2022script.sh [OPTIONS...]
 
 Options: 
-  -i  --install        Install ss-rust
-  -r  --remove         Uninstall ss-rust
-  -f  --cover          Cover install ss-rust
-  -l  --log            Show log information
-  -c  --config         Show config information
-  -u  --url-scheme     Show url-scheme information
-  -st --start          Start ss-rust
-  -sp --stop           Stop ss-rust
-  -rt --restart        Restart ss-rust
-  -ss --status         Show ss-rust status
-  -h  --help           Show this help
+Options: 
+  -i  --install            Install ss-rust
+  -r  --remove             Remove ss-rust
+  -f  --cover              Cover install ss-rust
+  -u  --update-script      Update script
+  -l  --log                Show log information
+  -c  --config             Show config information
+  -s  --url-scheme         Show url-scheme information
+  -st --start              Start ss-rust
+  -sp --stop               Stop ss-rust
+  -rt --restart            Restart ss-rust
+  -ss --status             Show ss-rust status
+  -v  --version            Show script version number
+  -h  --help               Show this help
 
 Source: https://github.com/loyess/2022
 ```

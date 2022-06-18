@@ -1,22 +1,19 @@
 #!/bin/bash
 
-
 VERSION="1.0.0"
-
 
 SSRUST_CIPHERS=(
 none
 plain
-aes-256-gcm
 aes-128-gcm
+aes-256-gcm
 chacha20-ietf-poly1305
 2022-blake3-aes-128-gcm
 2022-blake3-aes-256-gcm
 2022-blake3-chacha20-poly1305
 )
 
-
-CURRENT_PATH=`pwd`
+CURRENT_PATH=$(pwd)
 # You can set this variable whatever you want in shell session right before running this script by issuing:
 # export SSRUST_ROOT_DIR='/etc/rustss2022'
 SSRUST_ROOT_DIR="${SSRUST_ROOT_DIR:-$CURRENT_PATH/rustss2022}"
@@ -27,7 +24,6 @@ SSRUST_SERVICE_FILE="/etc/systemd/system/ss-rust.service"
 SSRUST_SERVICE_NAME="$(basename $SSRUST_SERVICE_FILE)"
 SCRIPT_ENV_DIR="/root/.2022ScriptEnv"
 SSRUST_ROOT_DIR_INFO="${SCRIPT_ENV_DIR}/path.info"
-
 
 logo(){
     yellow " ____   ___ ____  ____    ____            _       _   "
@@ -41,19 +37,21 @@ logo(){
 usage(){
     clear -x && logo
     echo -e "\nUsage: "
-    echo -e "  ./$(basename $0) [OPTIONS...]\n"
+    echo -e "  ./$(basename "$0") [OPTIONS...]\n"
     echo -e "Options: "
-    echo -e "  -i  --install        Install ss-rust"
-    echo -e "  -r  --remove         Uninstall ss-rust"
-    echo -e "  -f  --cover          Cover install ss-rust"
-    echo -e "  -l  --log            Show log information"
-    echo -e "  -c  --config         Show config information"
-    echo -e "  -u  --url-scheme     Show url-scheme information"
-    echo -e "  -st --start          Start ss-rust"
-    echo -e "  -sp --stop           Stop ss-rust"
-    echo -e "  -rt --restart        Restart ss-rust"
-    echo -e "  -ss --status         Show ss-rust status"
-    echo -e "  -h  --help           Show this help\n"
+    echo -e "  -i  --install            Install ss-rust"
+    echo -e "  -r  --remove             Remove ss-rust"
+    echo -e "  -f  --cover              Cover install ss-rust"
+    echo -e "  -u  --update-script      Update script"
+    echo -e "  -l  --log                Show log information"
+    echo -e "  -c  --config             Show config information"
+    echo -e "  -s  --url-scheme         Show url-scheme information"
+    echo -e "  -st --start              Start ss-rust"
+    echo -e "  -sp --stop               Stop ss-rust"
+    echo -e "  -rt --restart            Restart ss-rust"
+    echo -e "  -ss --status             Show ss-rust status"
+    echo -e "  -v  --version            Show script version number"
+    echo -e "  -h  --help               Show this help\n"
     echo -e "Source: https://github.com/loyess/2022\n"
 }
 
@@ -91,14 +89,18 @@ check_arch(){
 }
 
 get_ip(){
-    local IP=$( ip addr | egrep -o '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | egrep -v "^192\.168|^172\.1[6-9]\.|^172\.2[0-9]\.|^172\.3[0-2]\.|^10\.|^127\.|^255\.|^0\." | head -n 1 )
+    local IP
+
+    IP=$(ip addr | grep -Eo '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -Ev "^192\.168|^172\.1[6-9]\.|^172\.2[0-9]\.|^172\.3[0-2]\.|^10\.|^127\.|^255\.|^0\." | head -n 1)
     [ -z "${IP}" ] && IP=$( wget -qO- -t1 -T2 ipv4.icanhazip.com )
     [ -z "${IP}" ] && IP=$( wget -qO- -t1 -T2 ipinfo.io/ip )
     echo "${IP}"
 }
 
 get_ipv6(){
-    local ipv6=$(wget -qO- -t1 -T2 ipv6.icanhazip.com)
+    local ipv6
+
+    ipv6=$(wget -qO- -t1 -T2 ipv6.icanhazip.com)
     [ -z "${ipv6}" ] && return 1 || return 0
 }
 
@@ -109,7 +111,7 @@ get_char(){
     dd if=/dev/tty bs=1 count=1 2> /dev/null
     stty -raw
     stty echo
-    stty $SAVEDSTTY
+    stty "$SAVEDSTTY"
 }
 
 disable_selinux(){
@@ -120,7 +122,7 @@ disable_selinux(){
 }
 
 get_base64_encode(){
-    echo -n $1 | base64 -w0
+    echo -n "$1" | base64 -w0
 }
 
 gen_random_prot(){
@@ -128,7 +130,7 @@ gen_random_prot(){
 }
 
 gen_random_psk(){
-    ssrustPwd=`openssl rand -base64 $1`
+    ssrustPwd=$(openssl rand -base64 "$1")
     echo "The PSK is automatically generated based on the selected encryption method. Please don't modify it."
     red "  Password = ${ssrustPwd}"
 }
@@ -138,24 +140,30 @@ gen_random_str(){
 }
 
 download(){
-    local filename=$(basename $1)
-    if [ -e ${1} ]; then
+    local filename
+
+    filename=$(basename "$1")
+    if [ -e "${1}" ]; then
         error "The file ${filename} already exists."
     else
         info "The file ${filename} does't exist in the current directory to start downloading now."
-        wget --no-check-certificate -c -t3 -T60 -O ${1} ${2}
+        wget --no-check-certificate -c -t3 -T60 -O "${1}" "${2}"
         if [ $? -ne 0 ]; then
-            error "The file ${filename} download failed." && exit 1
+            error "The file ${filename} download failed."
+            rm -rf "${filename}" && info "rm -rf ${filename}" && exit 1
         fi
     fi
 }
 
 download_ssrust(){
+    local API_URL SSRUST_URL
+
     check_arch
     API_URL="https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases"
     # You can set this variable whatever you want in shell session right before running this script by issuing:
     # export SSRUST_VERSION='1.15.0-alpha.5'
-    SSRUST_VERSION=${SSRUST_VERSION:-`wget --no-check-certificate -qO- ${API_URL} | grep -o '"tag_name": ".*"' | grep "alpha" | head -n 1 | sed 's/"//g;s/v//g' | sed 's/tag_name: //g'`}
+    SSRUST_VERSION=${SSRUST_VERSION:-$(curl -s -m 10 ${API_URL} | grep 'tag_name' | grep 'alpha' | cut -d\" -f4 | head -n 1)}
+    [ -z "${SSRUST_VERSION}" ] && error "The network connection timed out and failed to obtain the ss-rust version number." && exit 1
     SSRUST_TARXZ_FILE_NAME="shadowsocks-v${SSRUST_VERSION}.${ARCH}-unknown-linux-musl"
     SSRUST_URL="https://github.com/shadowsocks/shadowsocks-rust/releases/download/v${SSRUST_VERSION}/${SSRUST_TARXZ_FILE_NAME}.tar.xz"
     download "${SSRUST_TARXZ_FILE_NAME}.tar.xz" "${SSRUST_URL}"
@@ -165,7 +173,7 @@ get_input_port(){
     local port
     
     gen_random_prot
-    read -ep "Please enter a port [1-65535] (deafult: ${ran_prot}): " port
+    read -p "Please enter a port [1-65535] (deafult: ${ran_prot}): " port
     [ -z "${ssrustPort}" ] && port="${ran_prot}"
     ssrustPort="${port}"
     red "  Port = ${ssrustPort}"
@@ -179,7 +187,7 @@ get_input_cipher(){
     for ((i=1;i<=${#SSRUST_CIPHERS[@]};i++)); do
         echo -e "  $i. ${SSRUST_CIPHERS[$i-1]}"
     done
-    echo && read -ep "Please select an encryption method (deafult: ${SSRUST_CIPHERS[5]}): " index
+    echo && read -p "Please select an encryption method (deafult: ${SSRUST_CIPHERS[5]}): " index
     [ -z "${index}" ] && index=6
     ssrustCipher="${SSRUST_CIPHERS[$index-1]}"
     red "  Method = ${ssrustCipher}"
@@ -196,7 +204,7 @@ get_input_password(){
         gen_random_psk 32
     else
         gen_random_str
-        read -ep "Please enter a password (deafult: ${ran_str12}): " pwdStr
+        read -p "Please enter a password (deafult: ${ran_str12}): " pwdStr
         [ -z "${pwdStr}" ] && pwdStr="${ran_str12}"
         ssrustPwd="${pwdStr}"
         red "  Password = ${ssrustPwd}"
@@ -205,7 +213,7 @@ get_input_password(){
 
 config_ssrust(){
     info "Writing config information into: ${SSRUST_CONFIG_FILE}"
-	cat > ${SSRUST_CONFIG_FILE} <<-EOF
+	cat > "${SSRUST_CONFIG_FILE}" <<-EOF
 	{
 	    "server":${ssrustServer},
 	    "server_port":${ssrustPort},
@@ -242,7 +250,7 @@ ssrust_service(){
     info "Reload systemd manager configuration."
     systemctl daemon-reload
     info "Starting shadowsocks-rust service."
-    systemctl start ${SSRUST_SERVICE_NAME}
+    systemctl start "${SSRUST_SERVICE_NAME}"
 }
 
 url_scheme(){
@@ -269,42 +277,43 @@ log_cat(){
 
 config_cat(){
     install_detect
-    clear -x && cat ${SSRUST_CONFIG_FILE}
+    clear -x && cat "${SSRUST_CONFIG_FILE}"
+    echo -e "\n${SSRUST_CONFIG_FILE}\n"
 }
 
 url_scheme_cat(){
     install_detect
-    clear -x && cat ${URL_SCHEME_CONF}
+    clear -x && cat "${URL_SCHEME_CONF}"
 }
 
 start_cmd(){
     install_detect
-    systemctl start ${SSRUST_SERVICE_NAME}
+    systemctl start "${SSRUST_SERVICE_NAME}"
     [ $? -eq 0 ] && info "Shadowsocks-rust start success."
 }
 
 stop_cmd(){
     install_detect
-    systemctl stop ${SSRUST_SERVICE_NAME}
+    systemctl stop "${SSRUST_SERVICE_NAME}"
     [ $? -eq 0 ] && info "Shadowsocks-rust stop success."
 }
 
 restart_cmd(){
     install_detect
-    systemctl restart ${SSRUST_SERVICE_NAME}
+    systemctl restart "${SSRUST_SERVICE_NAME}"
     [ $? -eq 0 ] && info "Shadowsocks-rust restart success."
 }
 
 status_cmd(){
     install_detect
-    systemctl status ${SSRUST_SERVICE_NAME}
+    systemctl status "${SSRUST_SERVICE_NAME}"
 }
 
 remove_ssrust(){
     if [ -d "${SSRUST_ROOT_DIR}" ]; then
         info "Starting remove shadowsocks-rust."
-        systemctl stop ${SSRUST_SERVICE_NAME} && echo "systemctl stop ${SSRUST_SERVICE_NAME}"
-        systemctl disable ${SSRUST_SERVICE_NAME} && echo "systemctl disable ${SSRUST_SERVICE_NAME}"
+        systemctl stop "${SSRUST_SERVICE_NAME}" && echo "systemctl stop ${SSRUST_SERVICE_NAME}"
+        systemctl disable "${SSRUST_SERVICE_NAME}" && echo "systemctl disable ${SSRUST_SERVICE_NAME}"
         rm -rf "${SSRUST_SERVICE_FILE}" && echo "rm -rf ${SSRUST_SERVICE_FILE}"
         read SSRUST_ROOT_DIR < ${SSRUST_ROOT_DIR_INFO}
         rm -rf "${SSRUST_ROOT_DIR}" && echo "rm -rf ${SSRUST_ROOT_DIR}"
@@ -332,10 +341,10 @@ install_ssrust(){
     fi
     if [ ! -d "${SCRIPT_ENV_DIR}" ]; then
         mkdir -p "${SCRIPT_ENV_DIR}"
-        info "Creating $(basename $0) script env directory: ${SCRIPT_ENV_DIR}"
+        info "Creating $(basename "$0") script env directory: ${SCRIPT_ENV_DIR}"
     fi
     info "Writing shadowsocks-rust install path into: ${SSRUST_ROOT_DIR_INFO}"
-    echo ${SSRUST_ROOT_DIR} > ${SSRUST_ROOT_DIR_INFO}
+    echo "${SSRUST_ROOT_DIR}" > ${SSRUST_ROOT_DIR_INFO}
     info "Extract the tar.xz file: ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
     tar -C "${SSRUST_ROOT_DIR}" -xvf "${SSRUST_TARXZ_FILE_NAME}".tar.xz
     rm -rf "${SSRUST_TARXZ_FILE_NAME}".tar.xz && echo "rm -rf ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
@@ -363,6 +372,26 @@ cover_install(){
     start_cmd
 }
 
+version_info(){
+    echo -e "$(basename "$0") v${VERSION}"
+}
+
+update_script(){
+    local API_URL LATEST_VERSION CURRENT_VERSION
+
+    API_URL="https://api.github.com/repos/loyess/2022/tags"
+    LATEST_VERSION=$(curl -s -m 10 ${API_URL} | grep 'name' | cut -d\" -f4 | head -n 1 | sed 's/v//g;s/.//g')
+    [ -z "${LATEST_VERSION}" ] && error "The network connection timed out and failed to obtain the ss-rust version number." && exit 1
+    CURRENT_VERSION=${VERSION//./}
+    if [[ ${LATEST_VERSION} > ${CURRENT_VERSION} ]]; then
+        info "The script gets to the new version and starts to update."
+        curl -OL https://github.com/loyess/2022/raw/main/2022script.sh
+        info "Update done."
+    else
+        info "Already the latest version, no need to update."
+    fi
+}
+
 
 action=${1:-"-i"}
 case ${action} in
@@ -375,13 +404,16 @@ case ${action} in
     -f|--cover)
         cover_install
         ;;
+    -u|--update-script)
+        update_script
+        ;;
     -l|--log)
         log_cat
         ;;
     -c|--config)
         config_cat
         ;;
-    -u|--url-scheme)
+    -s|--url-scheme)
         url_scheme_cat
         ;;
     -st|--start)
@@ -395,6 +427,9 @@ case ${action} in
         ;;
     -ss|--status)
         status_cmd
+        ;;
+    -v|--version)
+        version_info
         ;;
     -h|--help)
         usage
