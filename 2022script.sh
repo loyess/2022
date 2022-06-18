@@ -162,7 +162,7 @@ download_ssrust(){
     API_URL="https://api.github.com/repos/shadowsocks/shadowsocks-rust/releases"
     # You can set this variable whatever you want in shell session right before running this script by issuing:
     # export SSRUST_VERSION='1.15.0-alpha.5'
-    SSRUST_VERSION=${SSRUST_VERSION:-$(curl -s -m 10 ${API_URL} | grep 'tag_name' | grep 'alpha' | cut -d\" -f4 | head -n 1)}
+    SSRUST_VERSION=${SSRUST_VERSION:-$(curl -s -m 10 ${API_URL} | grep 'tag_name' | grep 'alpha' | cut -d\" -f4 | head -n 1 | sed 's/v//g')}
     [ -z "${SSRUST_VERSION}" ] && error "The network connection timed out and failed to obtain the ss-rust version number." && exit 1
     SSRUST_TARXZ_FILE_NAME="shadowsocks-v${SSRUST_VERSION}.${ARCH}-unknown-linux-musl"
     SSRUST_URL="https://github.com/shadowsocks/shadowsocks-rust/releases/download/v${SSRUST_VERSION}/${SSRUST_TARXZ_FILE_NAME}.tar.xz"
