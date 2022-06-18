@@ -211,6 +211,15 @@ get_input_password(){
     fi
 }
 
+get_input_dns(){
+    local nameServer
+
+    read -p "Please enter a dns (deafult: 8.8.8.8): " nameServer
+    [ -z "${nameServer}" ] && nameServer="8.8.8.8"
+    ssrustDns="${nameServer}"
+    red "  DNS = ${ssrustDns}"
+}
+
 config_ssrust(){
     info "Writing config information into: ${SSRUST_CONFIG_FILE}"
 	cat > "${SSRUST_CONFIG_FILE}" <<-EOF
@@ -221,7 +230,6 @@ config_ssrust(){
 	    "timeout":300,
 	    "method":"${ssrustCipher}",
 	    "ipv6_first":${ipv6First},
-	    "nameserver":"8.8.8.8",
 	    "mode":"tcp_and_udp"
 	}
 	EOF
@@ -242,7 +250,7 @@ ssrust_service(){
 	[Service]
 	Type=simple
 	LimitNOFILE=32768
-	ExecStart=${SSSERVER_BIN_FILE} --log-without-time -c ${SSRUST_CONFIG_FILE}
+	ExecStart=${SSSERVER_BIN_FILE} --log-without-time --dns ${ssrustDns} -c ${SSRUST_CONFIG_FILE}
 	
 	[Install]
 	WantedBy=multi-user.target
@@ -332,6 +340,7 @@ install_ssrust(){
     get_input_port
     get_input_cipher
     get_input_password
+    get_input_dns
     info "Press any key to start... or Ctrl+C to cancel."
     get_char
     download_ssrust
