@@ -276,7 +276,11 @@ url_scheme(){
 }
 
 install_detect(){
-    [ ! -d "${SSRUST_ROOT_DIR}" ] && error "Shadowsocks-rust not installed." && exit 1
+    if [ -e "${SSRUST_ROOT_DIR_INFO}" ]; then
+        read SSRUST_ROOT_DIR < ${SSRUST_ROOT_DIR_INFO}
+    else
+        error "Shadowsocks-rust not installed." && exit 1
+    fi
 }
 
 log_cat(){
@@ -286,13 +290,13 @@ log_cat(){
 
 config_cat(){
     install_detect
-    clear -x && cat "${SSRUST_CONFIG_FILE}"
+    clear -x && cat "${SSRUST_ROOT_DIR}/config.json"
     echo -e "\n${SSRUST_CONFIG_FILE}\n"
 }
 
 url_scheme_cat(){
     install_detect
-    clear -x && cat "${URL_SCHEME_CONF}"
+    clear -x && cat "${SSRUST_ROOT_DIR}/url_scheme.conf"
 }
 
 start_cmd(){
@@ -319,24 +323,20 @@ status_cmd(){
 }
 
 remove_ssrust(){
-    if [ -d "${SSRUST_ROOT_DIR}" ]; then
-        info "Starting remove shadowsocks-rust."
-        systemctl stop "${SSRUST_SERVICE_NAME}" && echo "systemctl stop ${SSRUST_SERVICE_NAME}"
-        systemctl disable "${SSRUST_SERVICE_NAME}" && echo "systemctl disable ${SSRUST_SERVICE_NAME}"
-        rm -rf "${SSRUST_SERVICE_FILE}" && echo "rm -rf ${SSRUST_SERVICE_FILE}"
-        read SSRUST_ROOT_DIR < ${SSRUST_ROOT_DIR_INFO}
-        rm -rf "${SSRUST_ROOT_DIR}" && echo "rm -rf ${SSRUST_ROOT_DIR}"
-        rm -rf "${SCRIPT_ENV_DIR}" && echo "rm -rf ${SCRIPT_ENV_DIR}"
-        info "Remove done."
-    else
-        error "Shadowsocks-rust not installed."
-    fi
+    install_detect
+    info "Starting remove shadowsocks-rust."
+    systemctl stop "${SSRUST_SERVICE_NAME}" && echo "systemctl stop ${SSRUST_SERVICE_NAME}"
+    systemctl disable "${SSRUST_SERVICE_NAME}" && echo "systemctl disable ${SSRUST_SERVICE_NAME}"
+    rm -rf "${SSRUST_SERVICE_FILE}" && echo "rm -rf ${SSRUST_SERVICE_FILE}"
+    rm -rf "${SSRUST_ROOT_DIR}" && echo "rm -rf ${SSRUST_ROOT_DIR}"
+    rm -rf "${SCRIPT_ENV_DIR}" && echo "rm -rf ${SCRIPT_ENV_DIR}"
+    info "Remove done."
 }
 
 install_ssrust(){
     [ $EUID -ne 0 ] && error "This script must be run as root !" && exit 1
     disable_selinux
-    [ -d "${SSRUST_ROOT_DIR}" ] && error "Shadowsocks-rust is already installed." && exit 1
+    [ -e "${SSRUST_ROOT_DIR_INFO}" ] && error "Shadowsocks-rust is already installed." && exit 1
     clear -x && logo
     get_input_port
     get_input_cipher
@@ -374,7 +374,6 @@ cover_install(){
     install_detect
     download_ssrust
     stop_cmd
-    read SSRUST_ROOT_DIR < ${SSRUST_ROOT_DIR_INFO}
     info "Extract the tar.xz file: ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
     tar -C "${SSRUST_ROOT_DIR}" -xvf "${SSRUST_TARXZ_FILE_NAME}".tar.xz
     rm -rf "${SSRUST_TARXZ_FILE_NAME}".tar.xz && echo "rm -rf ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
