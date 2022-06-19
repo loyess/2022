@@ -322,13 +322,31 @@ status_cmd(){
     systemctl status "${SSRUST_SERVICE_NAME}"
 }
 
+judge_folder_is_null()(
+    if [ "$(ls -A "$1")" = "" ]; then
+        return 0
+    else
+        return 1
+    fi
+)
+
 remove_ssrust(){
+    local file filesList
+
     install_detect
     info "Starting remove shadowsocks-rust."
     systemctl stop "${SSRUST_SERVICE_NAME}" && echo "systemctl stop ${SSRUST_SERVICE_NAME}"
     systemctl disable "${SSRUST_SERVICE_NAME}" && echo "systemctl disable ${SSRUST_SERVICE_NAME}"
     rm -rf "${SSRUST_SERVICE_FILE}" && echo "rm -rf ${SSRUST_SERVICE_FILE}"
-    rm -rf "${SSRUST_ROOT_DIR}" && echo "rm -rf ${SSRUST_ROOT_DIR}"
+    filesList=(config.json sslocal ssmanager ssserver ssservice ssurl url_scheme.conf)
+    for file in "${filesList[@]}"; do
+        rm -rf "${SSRUST_ROOT_DIR:?}/${file}" && echo "rm -rf ${SSRUST_ROOT_DIR:?}/${file}"
+    done
+    if judge_folder_is_null "$SSRUST_ROOT_DIR"; then
+        rm -rf "${SSRUST_ROOT_DIR}" && echo "rm -rf ${SSRUST_ROOT_DIR}"
+    else
+        info "The folder \033[0;33m${SSRUST_ROOT_DIR}\033[0m is not null skipped delete."
+    fi
     rm -rf "${SCRIPT_ENV_DIR}" && echo "rm -rf ${SCRIPT_ENV_DIR}"
     info "Remove done."
 }
