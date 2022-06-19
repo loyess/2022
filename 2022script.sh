@@ -429,6 +429,7 @@ update_script(){
         info "The script gets to the new version and starts to update."
         curl -OL https://github.com/loyess/2022/raw/main/2022script.sh
         info "Update done."
+        exit 0
     else
         info "Already the latest version, no need to update."
     fi
