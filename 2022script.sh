@@ -37,11 +37,12 @@ logo(){
 usage(){
     clear -x && logo
     echo -e "\nUsage: "
-    echo -e "  ./$(basename "$0") [OPTIONS...]\n"
+    echo -e "  ./$(basename "$0") [OPTIONS...] [ARGS...]\n"
     echo -e "Options: "
     echo -e "  -i  --install            Install ss-rust"
     echo -e "  -r  --remove             Remove ss-rust"
     echo -e "  -f  --cover              Cover install ss-rust"
+    echo -e "  -p  --specifypi          Specify path install ss-rust"
     echo -e "  -u  --update-script      Update script"
     echo -e "  -l  --log                Show log information"
     echo -e "  -c  --config             Show config information"
@@ -381,6 +382,21 @@ cover_install(){
     start_cmd
 }
 
+specify_path_install(){
+    local errorText exampleText
+    local SSRUST_ROOT_DIR SSSERVER_BIN_FILE SSRUST_CONFIG_FILE URL_SCHEME_CONF
+
+    [ -e $SSRUST_ROOT_DIR_INFO ] && error "Shadowsocks-rust is already installed." && exit 1
+    exampleText="eg: ./$(basename "$0") -p /etc/ss-rust"
+    errorText="After the -p option, you need to specify an absolute path as a parameter."
+    [ -z "$1" ] && error "${errorText}\n\n  ${exampleText}\n" && exit 1
+    SSRUST_ROOT_DIR="$1"
+    SSSERVER_BIN_FILE="${SSRUST_ROOT_DIR}/ssserver"
+    SSRUST_CONFIG_FILE="${SSRUST_ROOT_DIR}/config.json"
+    URL_SCHEME_CONF="${SSRUST_ROOT_DIR}/url_scheme.conf"
+    install_ssrust
+}
+
 version_info(){
     echo -e "$(basename "$0") v${VERSION}"
 }
@@ -418,6 +434,11 @@ while [[ $# -ge 1 ]]; do
     -f|--cover)
       shift
       cover_install
+      ;;
+    -p|--specifypi)
+      shift
+      specify_path_install "$1"
+      shift
       ;;
     -u|--update-script)
       shift
