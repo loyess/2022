@@ -57,18 +57,15 @@ usage(){
 }
 
 info(){
-    # green
     echo -e "\033[32m[Info]\033[0m $1"
 }
 
 error(){
-    # red
     echo -e "\033[31m[Error]\033[0m $1"
 }
 
 red(){
-    # \n red \n
-    echo -e "\n\033[31m$1\033[0m\n"
+    echo -e "\033[31m$1\033[0m"
 }
 
 yellow(){
@@ -133,7 +130,7 @@ gen_random_prot(){
 gen_random_psk(){
     ssrustPwd=$(openssl rand -base64 "$1")
     echo "The PSK is automatically generated based on the selected encryption method. Please don't modify it."
-    red "  Password = ${ssrustPwd}"
+    red "\n  Password = ${ssrustPwd}\n"
 }
 
 gen_random_str(){
@@ -177,7 +174,7 @@ get_input_port(){
     read -p "Please enter a port [1-65535] (deafult: ${ran_prot}): " port
     [ -z "${ssrustPort}" ] && port="${ran_prot}"
     ssrustPort="${port}"
-    red "  Port = ${ssrustPort}"
+    red "\n  Port = ${ssrustPort}\n"
     info "The script does't perform port occupancy detection. If you cannot connect, please check by yourself.\n"
 }
 
@@ -191,7 +188,7 @@ get_input_cipher(){
     echo && read -p "Please select an encryption method (deafult: ${SSRUST_CIPHERS[5]}): " index
     [ -z "${index}" ] && index=6
     ssrustCipher="${SSRUST_CIPHERS[$index-1]}"
-    red "  Method = ${ssrustCipher}"
+    red "\n  Method = ${ssrustCipher}\n"
 }
 
 get_input_password(){
@@ -208,7 +205,7 @@ get_input_password(){
         read -p "Please enter a password (deafult: ${ran_str12}): " pwdStr
         [ -z "${pwdStr}" ] && pwdStr="${ran_str12}"
         ssrustPwd="${pwdStr}"
-        red "  Password = ${ssrustPwd}"
+        red "\n  Password = ${ssrustPwd}\n"
     fi
 }
 
@@ -218,7 +215,7 @@ get_input_dns(){
     read -p "Please enter a dns (deafult: 8.8.8.8): " nameServer
     [ -z "${nameServer}" ] && nameServer="8.8.8.8"
     ssrustDns="${nameServer}"
-    red "  DNS = ${ssrustDns}"
+    red "\n  DNS = ${ssrustDns}\n"
 }
 
 config_ssrust(){
@@ -268,7 +265,7 @@ url_scheme(){
     userinfo=$(get_base64_encode "${ssrustCipher}:${ssrustPwd}")
     hostnamePort="$(get_ip):${ssrustPort}"
     info "The information of shadowsocks-rust <ss://links> is as follows:"
-    red "  ss://${userinfo}@${hostnamePort}"
+    red "\n  ss://${userinfo}@${hostnamePort}\n"
     info "Writing <ss://links> information into: ${URL_SCHEME_CONF}"
     echo -e "\033[32m[Info]\033[0m The information of shadowsocks-rust <ss://links> is as follows:" > "${URL_SCHEME_CONF}"
     echo -e "\n\033[31m  ss://${userinfo}@${hostnamePort}\033[0m\n" >> "${URL_SCHEME_CONF}"
