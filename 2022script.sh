@@ -86,6 +86,33 @@ check_arch(){
     esac
 }
 
+check_system(){
+    if [ "$(command -v apt-get)" ]; then
+        PKGMER='apt-get'
+    elif [ "$(command -v dnf)" ]; then
+        PKGMER='dnf'
+    elif [ "$(command -v yum)" ]; then
+        PKGMER='yum'
+    else
+        error "OS not supported..." && exit 1
+    fi
+}
+
+pkg_install(){
+    local packages=$1
+
+    info "The following packages will be installed: " 
+    if [ "${PKGMER}" = 'dnf' ] || [ "${PKGMER}" = 'yum' ]; then
+        echo -e "\n  \033[32m${PKGMER} install -y ${packages}\033[0m\n"
+        ${PKGMER} install -y ${packages}
+    else
+        echo -e "\n  \033[32m${PKGMER} update\033[0m"
+        echo -e "  \033[32m${PKGMER} install -y ${packages}\033[0m\\n"
+        ${PKGMER} update
+        ${PKGMER} install -y ${packages}
+    fi
+}
+
 get_ip(){
     local IP
 
@@ -348,6 +375,25 @@ remove_ssrust(){
     info "Remove done."
 }
 
+install_dependencies(){
+    if [ "${PKGMER}" = 'dnf' ] || [ "${PKGMER}" = 'yum' ]; then
+        pkg_install "wget chronyc"
+    else
+        pkg_install "wget ntpdate"
+    fi
+}
+
+sync_time(){
+    info "Start sync time.."
+    if [ "$(command -v ntpdate)" ]; then
+        ntpdate pool.ntp.org
+        [ $? -eq 0 ] && info "Sync time Success. Now: $(date -R)"
+    elif [ "$(command -v chronyc)" ]; then
+        chronyc -a makestep
+        [ $? -eq 0 ] && info "Sync time Success. Now: $(date -R)"
+    fi
+}
+
 install_ssrust(){
     [ $EUID -ne 0 ] && error "This script must be run as root !" && exit 1
     disable_selinux
@@ -359,6 +405,8 @@ install_ssrust(){
     get_input_dns
     info "Press any key to start... or Ctrl+C to cancel."
     get_char
+    check_system
+    install_dependencies
     download_ssrust
     if [ ! -d "${SSRUST_ROOT_DIR}" ]; then
         mkdir -p "${SSRUST_ROOT_DIR}"
@@ -381,6 +429,7 @@ install_ssrust(){
     fi
     config_ssrust
     config_firewall
+    sync_time
     ssrust_service
     url_scheme
 }
