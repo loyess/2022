@@ -341,7 +341,7 @@ log_cat(){
 config_cat(){
     install_detect
     clear -x && cat "${SSRUST_ROOT_DIR}/config.json"
-    echo -e "\n${SSRUST_CONFIG_FILE}\n"
+    echo -e "\n${SSRUST_ROOT_DIR}/config.json\n"
 }
 
 url_scheme_cat(){
