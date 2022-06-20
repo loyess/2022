@@ -261,7 +261,33 @@ config_ssrust(){
 }
 
 config_firewall(){
-    info "This script has no firewall settings, please open the port yourself: \033[0;33m${ssrustPort}\033[0m"
+    local PORT=$1
+
+    if [ "$(command -v firewall-cmd)" ] && firewall-cmd --state | head -n 1 | grep -Eq '^running$'; then
+        info "Detect that 'firewall-cmd' is installed and enabled start opening port: ${PORT}"
+        firewall-cmd --permanent --zone=public --add-port="${PORT}"/tcp
+        firewall-cmd --permanent --zone=public --add-port="${PORT}"/udp
+        firewall-cmd --reload
+        echo -e "\033[32m\n  firewall-cmd --permanent --zone=public --add-port=${PORT}/tcp\033[0m"
+        echo -e "\033[32m  firewall-cmd --permanent --zone=public --add-port=${PORT}/udp\033[0m"
+        echo -e "\033[32m  firewall-cmd --reload\033[0m\n"
+    elif [ "$(command -v ufw)" ] && ufw status numbered | head -n 1 | cut -d\  -f2 | grep -Eq '^active$'; then
+        info "Detect that 'ufw' is installed and enabled start opening port: ${PORT}"
+        ufw allow "${PORT}"/tcp
+        ufw allow "${PORT}"/udp
+        ufw reload
+        echo -e "\033[32m\n  ufw allow ${PORT}/tcp\033[0m"
+        echo -e "\033[32m  ufw allow ${PORT}/udp\033[0m"
+        echo -e "\033[32m  ufw reload\033[0m\n"
+    elif [ "$(command -v iptables)" ]; then
+        info "Exclude 'firewall-cmd' or 'ufw' try to open the port with 'iptables': ${PORT}"
+        iptables -I INPUT -p tcp --dport "${PORT}" -j ACCEPT
+        iptables -I INPUT -p udp --dport "${PORT}" -j ACCEPT
+        echo -e "\033[32m\n  iptables -I INPUT -p tcp --dport ${PORT} -j ACCEPT\033[0m"
+        echo -e "\033[32m  iptables -I INPUT -p udp --dport ${PORT} -j ACCEPT\033[0m\n"
+    else
+        info "The 'firewall-cmd' or 'ufw' or 'iptables' is not installed or not started, please handle it yourself and open the port: ${PORT}"
+    fi
 }
 
 ssrust_service(){
@@ -428,7 +454,7 @@ install_ssrust(){
         ssrustServer="\"::\""
     fi
     config_ssrust
-    config_firewall
+    config_firewall "${ssrustPort}"
     sync_time
     ssrust_service
     url_scheme
