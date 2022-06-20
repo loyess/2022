@@ -3,20 +3,18 @@
 ![](https://img.shields.io/github/forks/loyess/2022.svg) 
 ![](https://img.shields.io/github/license/loyess/2022.svg)  
 
-## Dependencies
-```
-# Debian
-apt install -y wget curl
-
-# CentOS
-apt install -y wget curl
-```
-
 ## Installation
 ```
 curl -OL https://github.com/loyess/2022/raw/main/2022script.sh
 chmod +x 2022script.sh
 ./2022script.sh
+```
+
+## Specify path install
+```
+curl -OL https://github.com/loyess/2022/raw/main/2022script.sh
+chmod +x 2022script.sh
+./2022script.sh --specifypi /etc/ss-rust
 ```
 
 ## Uninstall
@@ -61,13 +59,13 @@ root@debian:~# ./2022script.sh -h
                                            |_|        
 
 Usage: 
-  ./2022script.sh [OPTIONS...]
+  ./2022script.sh [OPTIONS...] [ARGS...]
 
-Options: 
 Options: 
   -i  --install            Install ss-rust
   -r  --remove             Remove ss-rust
   -f  --cover              Cover install ss-rust
+  -p  --specifypi          Specify path install ss-rust
   -u  --update-script      Update script
   -l  --log                Show log information
   -c  --config             Show config information
@@ -84,7 +82,7 @@ Source: https://github.com/loyess/2022
 
 ## About firewall
 ```
-This script has no firewall settings, please open the port yourself.
+This script only simply handles the firewall settings. If you can't connect to the server after installation, please open the port yourself.
 ```
 
 Note: Only Linux servers with architectures `amd64|x86_64` and `armv8|aarch64` launched by the `Systemd` management application are supported.
