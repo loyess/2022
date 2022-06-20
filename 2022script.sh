@@ -199,7 +199,7 @@ get_input_port(){
     
     gen_random_prot
     read -p "Please enter a port [1-65535] (deafult: ${ran_prot}): " port
-    [ -z "${ssrustPort}" ] && port="${ran_prot}"
+    [ -z "${port}" ] && port="${ran_prot}"
     ssrustPort="${port}"
     red "\n  Port = ${ssrustPort}\n"
     info "The script does't perform port occupancy detection. If you cannot connect, please check by yourself.\n"
