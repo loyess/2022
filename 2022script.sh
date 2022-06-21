@@ -17,7 +17,7 @@ CURRENT_PATH=$(pwd)
 # You can set this variable whatever you want in shell session right before running this script by issuing:
 # export SSRUST_ROOT_DIR='/etc/rustss2022'
 SSRUST_ROOT_DIR="${SSRUST_ROOT_DIR:-$CURRENT_PATH/rustss2022}"
-SSSERVER_BIN_FILE="${SSRUST_ROOT_DIR}/ssserver"
+SSSERVICE_BIN_FILE="${SSRUST_ROOT_DIR}/ssservice"
 SSRUST_CONFIG_FILE="${SSRUST_ROOT_DIR}/config.json"
 URL_SCHEME_CONF="${SSRUST_ROOT_DIR}/url_scheme.conf"
 SSRUST_SERVICE_FILE="/etc/systemd/system/ss-rust.service"
@@ -301,7 +301,7 @@ ssrust_service(){
 	[Service]
 	Type=simple
 	LimitNOFILE=32768
-	ExecStart=${SSSERVER_BIN_FILE} --log-without-time --dns ${ssrustDns} -c ${SSRUST_CONFIG_FILE}
+	ExecStart=${SSSERVICE_BIN_FILE} server --log-without-time --dns ${ssrustDns} -c ${SSRUST_CONFIG_FILE}
 	
 	[Install]
 	WantedBy=multi-user.target
@@ -473,14 +473,14 @@ cover_install(){
 
 specify_path_install(){
     local errorText exampleText
-    local SSRUST_ROOT_DIR SSSERVER_BIN_FILE SSRUST_CONFIG_FILE URL_SCHEME_CONF
+    local SSRUST_ROOT_DIR SSSERVICE_BIN_FILE SSRUST_CONFIG_FILE URL_SCHEME_CONF
 
     [ -e $SSRUST_ROOT_DIR_INFO ] && error "Shadowsocks-rust is already installed." && exit 1
     exampleText="eg: ./$(basename "$0") -p /etc/ss-rust"
     errorText="After the -p option, you need to specify an absolute path as a parameter."
     [ -z "$1" ] && error "${errorText}\n\n  ${exampleText}\n" && exit 1
     SSRUST_ROOT_DIR="$1"
-    SSSERVER_BIN_FILE="${SSRUST_ROOT_DIR}/ssserver"
+    SSSERVICE_BIN_FILE="${SSRUST_ROOT_DIR}/ssservice"
     SSRUST_CONFIG_FILE="${SSRUST_ROOT_DIR}/config.json"
     URL_SCHEME_CONF="${SSRUST_ROOT_DIR}/url_scheme.conf"
     install_ssrust
