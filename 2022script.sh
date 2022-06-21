@@ -175,7 +175,7 @@ download(){
         wget --no-check-certificate -c -t3 -T60 -O "${1}" "${2}"
         if [ $? -ne 0 ]; then
             error "The file ${filename} download failed."
-            rm -rf "${filename}" && info "rm -rf ${filename}" && exit 1
+            rm -rf "${1}" && info "rm -rf ${1}" && exit 1
         fi
     fi
 }
@@ -191,7 +191,8 @@ download_ssrust(){
     [ -z "${SSRUST_VERSION}" ] && error "The network connection timed out and failed to obtain the ss-rust version number." && exit 1
     SSRUST_TARXZ_FILE_NAME="shadowsocks-v${SSRUST_VERSION}.${ARCH}-unknown-linux-musl"
     SSRUST_URL="https://github.com/shadowsocks/shadowsocks-rust/releases/download/v${SSRUST_VERSION}/${SSRUST_TARXZ_FILE_NAME}.tar.xz"
-    download "${SSRUST_TARXZ_FILE_NAME}.tar.xz" "${SSRUST_URL}"
+    TEMP_PATH=$(mktemp -d)
+    download "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}.tar.xz" "${SSRUST_URL}"
 }
 
 get_input_port(){
@@ -445,8 +446,8 @@ install_ssrust(){
     info "Writing shadowsocks-rust install path into: ${SSRUST_ROOT_DIR_INFO}"
     echo "${SSRUST_ROOT_DIR}" > ${SSRUST_ROOT_DIR_INFO}
     info "Extract the tar.xz file: ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
-    tar -C "${SSRUST_ROOT_DIR}" -xvf "${SSRUST_TARXZ_FILE_NAME}".tar.xz
-    rm -rf "${SSRUST_TARXZ_FILE_NAME}".tar.xz && echo "rm -rf ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
+    tar -C "${SSRUST_ROOT_DIR}" -xvf "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}".tar.xz
+    rm -rf "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}".tar.xz && echo "rm -rf ${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}.tar.xz"
     local ipv6First="false"
     local ssrustServer="\"0.0.0.0\""
     if get_ipv6; then
@@ -465,8 +466,8 @@ cover_install(){
     download_ssrust
     stop_cmd
     info "Extract the tar.xz file: ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
-    tar -C "${SSRUST_ROOT_DIR}" -xvf "${SSRUST_TARXZ_FILE_NAME}".tar.xz
-    rm -rf "${SSRUST_TARXZ_FILE_NAME}".tar.xz && echo "rm -rf ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
+    tar -C "${SSRUST_ROOT_DIR}" -xvf "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}".tar.xz
+    rm -rf "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}".tar.xz && echo "rm -rf ${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}.tar.xz"
     info "Shadowsocks-rust install done."
     start_cmd
 }
