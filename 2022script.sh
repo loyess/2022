@@ -23,7 +23,7 @@ URL_SCHEME_CONF="${SSRUST_ROOT_DIR}/url_scheme.conf"
 SSRUST_SERVICE_FILE="/etc/systemd/system/ss-rust.service"
 SSRUST_SERVICE_NAME="$(basename $SSRUST_SERVICE_FILE)"
 SCRIPT_ENV_DIR="/root/.2022ScriptEnv"
-SSRUST_ROOT_DIR_INFO="${SCRIPT_ENV_DIR}/path.info"
+SCRIPT_ENV_VARIABLES_FILE="${SCRIPT_ENV_DIR}/env.info"
 
 logo(){
     yellow " ____   ___ ____  ____    ____            _       _   "
@@ -137,6 +137,15 @@ get_char(){
     stty -raw
     stty echo
     stty "$SAVEDSTTY"
+}
+
+get_env_variable(){
+    local varName=$1
+    local keyValuePair
+
+    keyValuePair=$(grep "${varName}" "${SCRIPT_ENV_VARIABLES_FILE}")
+    # shellcheck disable=SC2163
+    export "${keyValuePair}"
 }
 
 disable_selinux(){
@@ -327,8 +336,12 @@ url_scheme(){
 }
 
 install_detect(){
-    if [ -e "${SSRUST_ROOT_DIR_INFO}" ]; then
-        read SSRUST_ROOT_DIR < ${SSRUST_ROOT_DIR_INFO}
+    if [ -e "/root/.2022ScriptEnv/path.info" ]; then
+        read SSRUST_ROOT_DIR < /root/.2022ScriptEnv/path.info
+        return
+    fi
+    if [ -e "${SCRIPT_ENV_VARIABLES_FILE}" ]; then
+        get_env_variable "SSRUST_ROOT_DIR"
     else
         error "Shadowsocks-rust not installed." && exit 1
     fi
@@ -424,7 +437,7 @@ sync_time(){
 install_ssrust(){
     [ $EUID -ne 0 ] && error "This script must be run as root !" && exit 1
     disable_selinux
-    [ -e "${SSRUST_ROOT_DIR_INFO}" ] && error "Shadowsocks-rust is already installed." && exit 1
+    [ -e "${SCRIPT_ENV_VARIABLES_FILE}" ] && error "Shadowsocks-rust is already installed." && exit 1
     clear -x && logo
     get_input_port
     get_input_cipher
@@ -443,8 +456,8 @@ install_ssrust(){
         mkdir -p "${SCRIPT_ENV_DIR}"
         info "Creating $(basename "$0") script env directory: ${SCRIPT_ENV_DIR}"
     fi
-    info "Writing shadowsocks-rust install path into: ${SSRUST_ROOT_DIR_INFO}"
-    echo "${SSRUST_ROOT_DIR}" > ${SSRUST_ROOT_DIR_INFO}
+    info "Writing shadowsocks-rust install path into: ${SCRIPT_ENV_VARIABLES_FILE}"
+    echo "SSRUST_ROOT_DIR=${SSRUST_ROOT_DIR}" > ${SCRIPT_ENV_VARIABLES_FILE}
     info "Extract the tar.xz file: ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
     tar -C "${SSRUST_ROOT_DIR}" -xvf "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}".tar.xz
     rm -rf "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}".tar.xz && echo "rm -rf ${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}.tar.xz"
@@ -476,7 +489,7 @@ specify_path_install(){
     local errorText exampleText
     local SSRUST_ROOT_DIR SSSERVICE_BIN_FILE SSRUST_CONFIG_FILE URL_SCHEME_CONF
 
-    [ -e $SSRUST_ROOT_DIR_INFO ] && error "Shadowsocks-rust is already installed." && exit 1
+    [ -e $SCRIPT_ENV_VARIABLES_FILE ] && error "Shadowsocks-rust is already installed." && exit 1
     exampleText="eg: ./$(basename "$0") -p /etc/ss-rust"
     errorText="After the -p option, you need to specify an absolute path as a parameter."
     [ -z "$1" ] && error "${errorText}\n\n  ${exampleText}\n" && exit 1
