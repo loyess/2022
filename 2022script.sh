@@ -104,11 +104,13 @@ pkg_install(){
     info "The following packages will be installed: " 
     if [ "${PKGMER}" = 'dnf' ] || [ "${PKGMER}" = 'yum' ]; then
         echo -e "\n  \033[32m${PKGMER} install -y ${packages}\033[0m\n"
+        # shellcheck disable=SC2086
         ${PKGMER} install -y ${packages}
     else
         echo -e "\n  \033[32m${PKGMER} update\033[0m"
         echo -e "  \033[32m${PKGMER} install -y ${packages}\033[0m\\n"
         ${PKGMER} update
+        # shellcheck disable=SC2086
         ${PKGMER} install -y ${packages}
     fi
 }
