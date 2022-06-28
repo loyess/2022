@@ -145,7 +145,13 @@ get_env_variable(){
 
     keyValuePair=$(grep "${varName}" "${SCRIPT_ENV_VARIABLES_FILE}")
     # shellcheck disable=SC2163
-    export "${keyValuePair}"
+    [ -z "${keyValuePair}" ] && export "${keyValuePair}"
+}
+
+write_env_variable(){
+    local keyValuePairText=$1
+
+    echo "${keyValuePairText}" >> "${SCRIPT_ENV_VARIABLES_FILE}"
 }
 
 disable_selinux(){
@@ -255,6 +261,22 @@ get_input_dns(){
     red "\n  DNS = ${ssrustDns}\n"
 }
 
+is_enable_persistent(){
+    read -p "Whether to persist iptables and ip6tables (deafult: n)[y/n]" isPersist
+    [ -z "${isPersist}" ] && isPersist="N"
+    case "${isPersist}" in
+        y|Y)
+            PERSISTENT='yes'
+            red "\n  iptables = enable persistent\n"
+            ;;
+        *)
+            PERSISTENT='no'
+            red "\n  iptables = disable persistent\n"
+            ;;
+    esac
+    info "If you don't understand iptables persistence please keep the default options"
+}
+
 config_ssrust(){
     info "Writing config information into: ${SSRUST_CONFIG_FILE}"
 	cat > "${SSRUST_CONFIG_FILE}" <<-EOF
@@ -270,34 +292,141 @@ config_ssrust(){
 	EOF
 }
 
+iptables_start(){
+    if ! systemctl is-active iptables 2>/dev/null | head -n 1 | grep -qE '^active$'; then
+        systemctl start iptables
+        systemctl enable iptables
+    fi
+}
+
+ip6tables_start(){
+    if ! systemctl is-active ip6tables 2>/dev/null | head -n 1 | grep -qE '^active$'; then
+        systemctl start ip6tables
+        systemctl enable ip6tables
+    fi
+}
+
+iptables_persistent(){
+    if [ "${PKGMER}" = 'dnf' ] || [ "${PKGMER}" = 'yum' ]; then
+        if [ ! -e "/etc/systemd/system/multi-user.target.wants/iptables.service" ]; then
+            ${PKGMER} install -y "iptables-services"
+        fi
+        iptables_start
+        iptables-save > /etc/sysconfig/iptables
+        ip6tables_start
+        ip6tables-save > /etc/sysconfig/ip6tables
+    else
+        if [ ! -e "/etc/systemd/system/multi-user.target.wants/netfilter-persistent.service" ]; then
+            # ref: https://gist.github.com/alonisser/a2c19f5362c2091ac1e7
+            echo 'iptables-persistent iptables-persistent/autosave_v4 boolean true' | debconf-set-selections
+            echo 'iptables-persistent iptables-persistent/autosave_v6 boolean true' | debconf-set-selections
+            ${PKGMER} install -y "iptables-persistent"
+        fi
+        iptables_start
+        iptables-save > /etc/iptables/rules.v4
+        ip6tables_start
+        ip6tables-save > /etc/iptables/rules.v6
+    fi
+}
+
+add_firewall_rule(){
+    local PORT=$1
+    local PROTOCOL=$2
+
+    if [ "${FIREWALL_MANAGE_TOOL}" = 'firewall-cmd' ]; then
+        if firewall-cmd --list-ports --permanent 2>/dev/null | grep -qw "${PORT}/${PROTOCOL}"; then
+            return
+        fi
+        firewall-cmd --permanent --zone=public --add-port="${PORT}"/"${PROTOCOL}" > /dev/null 2>&1
+        firewall-cmd --reload > /dev/null 2>&1
+    elif [ "${FIREWALL_MANAGE_TOOL}" = 'ufw' ]; then
+        if ufw status 2>/dev/null | grep -qw "${PORT}/${PROTOCOL}"; then
+            return
+        fi
+        ufw allow "${PORT}"/"${PROTOCOL}" > /dev/null 2>&1
+        ufw reload > /dev/null 2>&1
+    elif [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
+        if iptables -L 2>/dev/null | grep -q "allow ${PORT}/${PROTOCOL}(ss-rust)"; then
+            return
+        fi
+        iptables -I INPUT -p "${PROTOCOL}" --dport "${PORT}" -m comment --comment "allow ${PORT}/${PROTOCOL}(ss-rust)" -j ACCEPT > /dev/null 2>&1
+        ip6tables -I INPUT -p "${PROTOCOL}" --dport "${PORT}" -m comment --comment "allow ${PORT}/${PROTOCOL}(ss-rust)" -j ACCEPT > /dev/null 2>&1
+        if [ "${PERSISTENT}" = 'yes' ]; then
+            iptables_persistent
+        fi
+    fi
+}
+
+remove_firewall_rule(){
+    local PORT=$1
+    local PROTOCOL=$2
+
+    if [ "${FIREWALL_MANAGE_TOOL}" = 'firewall-cmd' ]; then
+        if ! firewall-cmd --list-ports --permanent 2>/dev/null | grep -qw "${PORT}/${PROTOCOL}"; then
+            return
+        fi
+        firewall-cmd --permanent --zone=public --remove-port="${PORT}"/"${PROTOCOL}" > /dev/null 2>&1
+        firewall-cmd --reload > /dev/null 2>&1
+    elif [ "${FIREWALL_MANAGE_TOOL}" = 'ufw' ]; then
+        if ! ufw status 2>/dev/null | grep -qw "${PORT}/${PROTOCOL}"; then
+            return
+        fi
+        ufw delete allow "${PORT}"/"${PROTOCOL}" > /dev/null 2>&1
+        ufw reload > /dev/null 2>&1
+    elif [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
+        if ! iptables -L 2>/dev/null | grep -q "allow ${PORT}/${PROTOCOL}(ss-rust)"; then
+            return
+        fi
+        iptables-save |  sed -e '/ss-rust/d' | iptables-restore
+        ip6tables-save |  sed -e '/ss-rust/d' | ip6tables-restore
+        if [ "${PERSISTENT}" = 'yes' ]; then
+            iptables_persistent
+        fi
+    fi
+}
+
+view_firewll_rule(){
+    local PORT=$1
+
+    if [ "${FIREWALL_MANAGE_TOOL}" = 'firewall-cmd' ]; then
+        info "Firewall Manager: \033[32mfirewall-cmd\033[0m"
+        info "All open ports will be listed below including port: ${PORT}"
+        firewall-cmd --list-ports --permanent
+        info "If it does not include port: \033[32m${PORT}\033[0m then opening the port fails, please check the firewall settings yourself"
+    elif [ "${FIREWALL_MANAGE_TOOL}" = 'ufw' ]; then
+        info "Firewall Manager: \033[32mufw\033[0m"
+        info "All open ports will be listed below including port: ${PORT}"
+        ufw status
+        info "If it does not include port: \033[32m${PORT}\033[0m then opening the port fails, please check the firewall settings yourself"
+    elif [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
+        info "Firewall Manager: \033[32miptables\033[0m"
+        info "All open ports will be listed below including port: ${PORT}"
+        iptables -L INPUT --line-numbers
+        info "Firewall Manager: \033[32mip6tables\033[0m"
+        info "All open ports will be listed below including port: ${PORT}"
+        ip6tables -L INPUT --line-numbers
+        info "If it does not include port: \033[32m${PORT}\033[0m then opening the port fails, please check the firewall settings yourself"
+    fi
+}
+
+firewall_status(){
+    if [ "$(command -v firewall-cmd)" ] && firewall-cmd --state 2>/dev/null | head -n 1 | grep -Eq '^running$'; then
+        FIREWALL_MANAGE_TOOL='firewalld'
+    elif [ "$(command -v ufw)" ] && ufw status numbered 2>/dev/null | head -n 1 | cut -d\  -f2 | grep -Eq '^active$'; then
+        FIREWALL_MANAGE_TOOL='ufw'
+    elif [ "$(command -v iptables)" ] && [ "$(command -v ip6tables)" ]; then
+        FIREWALL_MANAGE_TOOL='iptables'
+    fi
+}
+
 config_firewall(){
     local PORT=$1
 
-    if [ "$(command -v firewall-cmd)" ] && firewall-cmd --state | head -n 1 | grep -Eq '^running$'; then
-        info "Detect that 'firewall-cmd' is installed and enabled start opening port: ${PORT}"
-        firewall-cmd --permanent --zone=public --add-port="${PORT}"/tcp
-        firewall-cmd --permanent --zone=public --add-port="${PORT}"/udp
-        firewall-cmd --reload
-        echo -e "\033[32m\n  firewall-cmd --permanent --zone=public --add-port=${PORT}/tcp\033[0m"
-        echo -e "\033[32m  firewall-cmd --permanent --zone=public --add-port=${PORT}/udp\033[0m"
-        echo -e "\033[32m  firewall-cmd --reload\033[0m\n"
-    elif [ "$(command -v ufw)" ] && ufw status numbered | head -n 1 | cut -d\  -f2 | grep -Eq '^active$'; then
-        info "Detect that 'ufw' is installed and enabled start opening port: ${PORT}"
-        ufw allow "${PORT}"/tcp
-        ufw allow "${PORT}"/udp
-        ufw reload
-        echo -e "\033[32m\n  ufw allow ${PORT}/tcp\033[0m"
-        echo -e "\033[32m  ufw allow ${PORT}/udp\033[0m"
-        echo -e "\033[32m  ufw reload\033[0m\n"
-    elif [ "$(command -v iptables)" ]; then
-        info "Exclude 'firewall-cmd' or 'ufw' try to open the port with 'iptables': ${PORT}"
-        iptables -I INPUT -p tcp --dport "${PORT}" -j ACCEPT
-        iptables -I INPUT -p udp --dport "${PORT}" -j ACCEPT
-        echo -e "\033[32m\n  iptables -I INPUT -p tcp --dport ${PORT} -j ACCEPT\033[0m"
-        echo -e "\033[32m  iptables -I INPUT -p udp --dport ${PORT} -j ACCEPT\033[0m\n"
-    else
-        info "The 'firewall-cmd' or 'ufw' or 'iptables' is not installed or not started, please handle it yourself and open the port: ${PORT}"
-    fi
+    add_firewall_rule "${PORT}" "tcp"
+    add_firewall_rule "${PORT}" "udp"
+    view_firewll_rule "${PORT}"
+    write_env_variable "FIREWALL_MANAGE_TOOL='${FIREWALL_MANAGE_TOOL}'"
+    [ -z "${PERSISTENT}" ] && write_env_variable "PERSISTENT='${PERSISTENT}'"
 }
 
 ssrust_service(){
@@ -395,10 +524,16 @@ judge_folder_is_null()(
 )
 
 remove_ssrust(){
-    local file filesList
+    local file filesList port
 
     install_detect
     info "Starting remove shadowsocks-rust."
+    port=$(grep 'server_port' "${SSRUST_ROOT_DIR}/config.json" | sed 's/"//g;s/,//g' | cut -d: -f2)
+    get_env_variable "PERSISTENT"
+    get_env_variable "FIREWALL_MANAGE_TOOL"
+    remove_firewall_rule "${port}" tcp
+    remove_firewall_rule "${port}" udp
+    info "Remove port ${port} from firewall rule."
     systemctl stop "${SSRUST_SERVICE_NAME}" && echo "systemctl stop ${SSRUST_SERVICE_NAME}"
     systemctl disable "${SSRUST_SERVICE_NAME}" && echo "systemctl disable ${SSRUST_SERVICE_NAME}"
     rm -rf "${SSRUST_SERVICE_FILE}" && echo "rm -rf ${SSRUST_SERVICE_FILE}"
@@ -443,6 +578,10 @@ install_ssrust(){
     get_input_cipher
     get_input_password
     get_input_dns
+    firewall_status
+    if [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
+        is_enable_persistent
+    fi
     info "Press any key to start... or Ctrl+C to cancel."
     get_char
     check_system
@@ -457,7 +596,7 @@ install_ssrust(){
         info "Creating $(basename "$0") script env directory: ${SCRIPT_ENV_DIR}"
     fi
     info "Writing shadowsocks-rust install path into: ${SCRIPT_ENV_VARIABLES_FILE}"
-    echo "SSRUST_ROOT_DIR=${SSRUST_ROOT_DIR}" > ${SCRIPT_ENV_VARIABLES_FILE}
+    write_env_variable "SSRUST_ROOT_DIR=${SSRUST_ROOT_DIR}"
     info "Extract the tar.xz file: ${SSRUST_TARXZ_FILE_NAME}.tar.xz"
     tar -C "${SSRUST_ROOT_DIR}" -xvf "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}".tar.xz
     rm -rf "${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}".tar.xz && echo "rm -rf ${TEMP_PATH}/${SSRUST_TARXZ_FILE_NAME}.tar.xz"
