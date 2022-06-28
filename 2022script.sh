@@ -147,7 +147,7 @@ get_env_variable(){
 
     keyValuePair=$(grep "${varName}" "${SCRIPT_ENV_VARIABLES_FILE}")
     # shellcheck disable=SC2163
-    [ -z "${keyValuePair}" ] && export "${keyValuePair}"
+    [ -n "${keyValuePair}" ] && export "${keyValuePair}"
 }
 
 write_env_variable(){
@@ -427,8 +427,8 @@ config_firewall(){
     add_firewall_rule "${PORT}" "tcp"
     add_firewall_rule "${PORT}" "udp"
     view_firewll_rule "${PORT}"
-    write_env_variable "FIREWALL_MANAGE_TOOL='${FIREWALL_MANAGE_TOOL}'"
-    [ -z "${PERSISTENT}" ] && write_env_variable "PERSISTENT='${PERSISTENT}'"
+    write_env_variable "FIREWALL_MANAGE_TOOL=${FIREWALL_MANAGE_TOOL}"
+    [ -n "${PERSISTENT}" ] && write_env_variable "PERSISTENT=${PERSISTENT}"
 }
 
 ssrust_service(){
