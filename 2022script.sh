@@ -556,7 +556,7 @@ remove_ssrust(){
 
 install_dependencies(){
     if [ "${PKGMER}" = 'dnf' ] || [ "${PKGMER}" = 'yum' ]; then
-        pkg_install "wget chronyc"
+        pkg_install "wget chrony"
     else
         pkg_install "wget ntpdate"
     fi
