@@ -413,7 +413,7 @@ view_firewll_rule(){
 
 firewall_status(){
     if [ "$(command -v firewall-cmd)" ] && firewall-cmd --state 2>/dev/null | head -n 1 | grep -Eq '^running$'; then
-        FIREWALL_MANAGE_TOOL='firewalld'
+        FIREWALL_MANAGE_TOOL='firewall-cmd'
     elif [ "$(command -v ufw)" ] && ufw status numbered 2>/dev/null | head -n 1 | cut -d\  -f2 | grep -Eq '^active$'; then
         FIREWALL_MANAGE_TOOL='ufw'
     elif [ "$(command -v iptables)" ] && [ "$(command -v ip6tables)" ]; then
