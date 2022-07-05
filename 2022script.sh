@@ -449,6 +449,8 @@ ssrust_service(){
 	EOF
     info "Reload systemd manager configuration."
     systemctl daemon-reload
+    info "Set the shadowsocks-rust service to start on boot."
+    systemctl enable "${SSRUST_SERVICE_NAME}"
     info "Starting shadowsocks-rust service."
     systemctl start "${SSRUST_SERVICE_NAME}"
 }
