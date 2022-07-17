@@ -74,10 +74,12 @@ Options:
   -sp --stop               Stop ss-rust
   -rt --restart            Restart ss-rust
   -ss --status             Show ss-rust status
+  -b  --bbr                Enable bbr
   -v  --version            Show script version number
   -h  --help               Show this help
 
 Source: https://github.com/loyess/2022
+BBR-Source: https://github.com/teddysun/across
 ```
 
 ## About firewall
