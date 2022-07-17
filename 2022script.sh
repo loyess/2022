@@ -52,6 +52,7 @@ usage(){
     echo -e "  -rt --restart            Restart ss-rust"
     echo -e "  -ss --status             Show ss-rust status"
     echo -e "  -b  --bbr                Enable bbr"
+    echo -e "  -fw --firewall           Config firewall manual mode"
     echo -e "  -v  --version            Show script version number"
     echo -e "  -h  --help               Show this help\n"
     echo -e "Source: https://github.com/loyess/2022"
@@ -433,6 +434,37 @@ config_firewall(){
     [ -n "${PERSISTENT}" ] && write_env_variable "PERSISTENT=${PERSISTENT}"
 }
 
+config_firewall_manual(){
+    local ACTIONS=$1
+    local PORT=$2
+
+    firewall_status
+    if [ -z "${FIREWALL_MANAGE_TOOL}" ]; then
+        error "Command firewall-cmd | ufw | iptables not exsits or not enabled"
+        exit 1
+    fi
+    case "${ACTIONS}" in
+      a|add)
+        add_firewall_rule "${PORT}" "tcp"
+        add_firewall_rule "${PORT}" "udp"
+        view_firewll_rule "${PORT}"
+        ;;
+      r|remove)
+        remove_firewall_rule "${PORT}" "tcp"
+        remove_firewall_rule "${PORT}" "udp"
+        view_firewll_rule "${PORT}"
+        ;;
+      v|view)
+        view_firewll_rule "${PORT}"
+        exit 0
+        ;;
+      *)
+        error "Usage: ./$(basename "$0") [-fw|--firewall] <a|add|r|remove|v|view> <port>"
+        exit 1
+        ;;
+    esac
+}
+
 ssrust_service(){
     info "Writing service information into: ${SSRUST_SERVICE_FILE}"
 	cat > ${SSRUST_SERVICE_FILE} <<-EOF
@@ -729,6 +761,11 @@ while [[ $# -ge 1 ]]; do
     -b|--bbr)
       shift
       enable_bbr
+      ;;
+    -fw|--firewall)
+      shift
+      config_firewall_manual "$1" "$2"
+      shift 2
       ;;
     -v|--version)
       shift
