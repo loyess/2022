@@ -51,9 +51,11 @@ usage(){
     echo -e "  -sp --stop               Stop ss-rust"
     echo -e "  -rt --restart            Restart ss-rust"
     echo -e "  -ss --status             Show ss-rust status"
+    echo -e "  -b  --bbr                Enable bbr"
     echo -e "  -v  --version            Show script version number"
     echo -e "  -h  --help               Show this help\n"
-    echo -e "Source: https://github.com/loyess/2022\n"
+    echo -e "Source: https://github.com/loyess/2022"
+    echo -e "BBR-Source: https://github.com/teddysun/across\n"
 }
 
 info(){
@@ -664,6 +666,11 @@ update_script(){
     fi
 }
 
+enable_bbr(){
+    # shellcheck disable=SC1090
+    source <(curl -sL 'https://raw.githubusercontent.com/teddysun/across/master/bbr.sh')
+}
+
 
 if [[ $# -eq 0 ]]; then
     install_ssrust
@@ -718,6 +725,10 @@ while [[ $# -ge 1 ]]; do
     -ss|--status)
       shift
       status_cmd
+      ;;
+    -b|--bbr)
+      shift
+      enable_bbr
       ;;
     -v|--version)
       shift
