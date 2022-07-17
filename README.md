@@ -75,6 +75,7 @@ Options:
   -rt --restart            Restart ss-rust
   -ss --status             Show ss-rust status
   -b  --bbr                Enable bbr
+  -fw --firewall           Config firewall manual mode
   -v  --version            Show script version number
   -h  --help               Show this help
 
