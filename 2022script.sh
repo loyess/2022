@@ -266,22 +266,6 @@ get_input_dns(){
     red "\n  DNS = ${ssrustDns}\n"
 }
 
-is_enable_persistent(){
-    read -p "Whether to persist iptables and ip6tables (deafult: n)[y/n]" isPersist
-    [ -z "${isPersist}" ] && isPersist="N"
-    case "${isPersist}" in
-        y|Y)
-            PERSISTENT='yes'
-            red "\n  iptables = enable persistent\n"
-            ;;
-        *)
-            PERSISTENT='no'
-            red "\n  iptables = disable persistent\n"
-            ;;
-    esac
-    info "If you don't understand iptables persistence please keep the default options"
-}
-
 config_ssrust(){
     info "Writing config information into: ${SSRUST_CONFIG_FILE}"
 	cat > "${SSRUST_CONFIG_FILE}" <<-EOF
@@ -351,14 +335,12 @@ add_firewall_rule(){
         ufw allow "${PORT}"/"${PROTOCOL}" > /dev/null 2>&1
         ufw reload > /dev/null 2>&1
     elif [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
-        if iptables -L 2>/dev/null | grep -q "allow ${PORT}/${PROTOCOL}(ss-rust)"; then
+        if iptables -L INPUT -n --line-numbers 2>/dev/null | grep -qw "${PROTOCOL} dpt:${PORT}"; then
             return
         fi
-        iptables -I INPUT -p "${PROTOCOL}" --dport "${PORT}" -m comment --comment "allow ${PORT}/${PROTOCOL}(ss-rust)" -j ACCEPT > /dev/null 2>&1
-        ip6tables -I INPUT -p "${PROTOCOL}" --dport "${PORT}" -m comment --comment "allow ${PORT}/${PROTOCOL}(ss-rust)" -j ACCEPT > /dev/null 2>&1
-        if [ "${PERSISTENT}" = 'yes' ]; then
-            iptables_persistent
-        fi
+        iptables -I INPUT -p "${PROTOCOL}" --dport "${PORT}" -j ACCEPT > /dev/null 2>&1
+        ip6tables -I INPUT -p "${PROTOCOL}" --dport "${PORT}" -j ACCEPT > /dev/null 2>&1
+        iptables_persistent
     fi
 }
 
@@ -379,14 +361,12 @@ remove_firewall_rule(){
         ufw delete allow "${PORT}"/"${PROTOCOL}" > /dev/null 2>&1
         ufw reload > /dev/null 2>&1
     elif [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
-        if ! iptables -L 2>/dev/null | grep -q "allow ${PORT}/${PROTOCOL}(ss-rust)"; then
+        if ! iptables -L INPUT -n --line-numbers 2>/dev/null | grep -qw "${PROTOCOL} dpt:${PORT}"; then
             return
         fi
-        iptables-save |  sed -e '/ss-rust/d' | iptables-restore
-        ip6tables-save |  sed -e '/ss-rust/d' | ip6tables-restore
-        if [ "${PERSISTENT}" = 'yes' ]; then
-            iptables_persistent
-        fi
+        iptables -D INPUT -p "${PROTOCOL}" --dport "${PORT}" -j ACCEPT  > /dev/null 2>&1
+        ip6tables -D INPUT -p "${PROTOCOL}" --dport "${PORT}" -j ACCEPT  > /dev/null 2>&1
+        iptables_persistent
     fi
 }
 
@@ -406,10 +386,10 @@ view_firewll_rule(){
     elif [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
         info "Firewall Manager: \033[32miptables\033[0m"
         info "All open ports will be listed below including port: ${PORT}"
-        iptables -L INPUT --line-numbers
+        iptables -L INPUT -n --line-numbers
         info "Firewall Manager: \033[32mip6tables\033[0m"
         info "All open ports will be listed below including port: ${PORT}"
-        ip6tables -L INPUT --line-numbers
+        ip6tables -L INPUT -n --line-numbers
         info "If it does not include port: \033[32m${PORT}\033[0m then opening the port fails, please check the firewall settings yourself"
     fi
 }
@@ -427,11 +407,12 @@ firewall_status(){
 config_firewall(){
     local PORT=$1
 
+    firewall_status
     add_firewall_rule "${PORT}" "tcp"
     add_firewall_rule "${PORT}" "udp"
     view_firewll_rule "${PORT}"
+    write_env_variable "SS_RUST_PORT=${PORT}"
     write_env_variable "FIREWALL_MANAGE_TOOL=${FIREWALL_MANAGE_TOOL}"
-    [ -n "${PERSISTENT}" ] && write_env_variable "PERSISTENT=${PERSISTENT}"
 }
 
 config_firewall_manual(){
@@ -566,12 +547,11 @@ remove_ssrust(){
 
     install_detect
     info "Starting remove shadowsocks-rust."
-    port=$(grep 'server_port' "${SSRUST_ROOT_DIR}/config.json" | sed 's/"//g;s/,//g' | cut -d: -f2)
-    get_env_variable "PERSISTENT"
+    get_env_variable "SS_RUST_PORT"
     get_env_variable "FIREWALL_MANAGE_TOOL"
-    remove_firewall_rule "${port}" tcp
-    remove_firewall_rule "${port}" udp
-    info "Remove port ${port} from firewall rule."
+    remove_firewall_rule "${SS_RUST_PORT}" tcp
+    remove_firewall_rule "${SS_RUST_PORT}" udp
+    info "Remove port ${SS_RUST_PORT} from firewall rule."
     systemctl stop "${SSRUST_SERVICE_NAME}" && echo "systemctl stop ${SSRUST_SERVICE_NAME}"
     systemctl disable "${SSRUST_SERVICE_NAME}" && echo "systemctl disable ${SSRUST_SERVICE_NAME}"
     rm -rf "${SSRUST_SERVICE_FILE}" && echo "rm -rf ${SSRUST_SERVICE_FILE}"
@@ -616,10 +596,6 @@ install_ssrust(){
     get_input_cipher
     get_input_password
     get_input_dns
-    firewall_status
-    if [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
-        is_enable_persistent
-    fi
     info "Press any key to start... or Ctrl+C to cancel."
     get_char
     check_system
