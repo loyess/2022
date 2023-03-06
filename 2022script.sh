@@ -411,6 +411,7 @@ config_firewall(){
 config_firewall_manual(){
     local ACTIONS=$1
     local PORT=$2
+    local PROTOCOL=$3
 
     firewall_status
     if [ -z "${FIREWALL_MANAGE_TOOL}" ]; then
@@ -419,24 +420,32 @@ config_firewall_manual(){
     fi
     case "${ACTIONS}" in
       a|add)
-        add_firewall_rule "${PORT}" "tcp"
-        add_firewall_rule "${PORT}" "udp"
-        view_firewll_rule "${PORT}"
+        if [ -z "${PROTOCOL}" ]; then
+            add_firewall_rule "${PORT}" tcp
+            add_firewall_rule "${PORT}" udp
+        else
+            add_firewall_rule "${PORT}" "${PROTOCOL}"
+        fi
+        view_firewll_rule
         ;;
       r|remove)
-        remove_firewall_rule "${PORT}" "tcp"
-        remove_firewall_rule "${PORT}" "udp"
-        view_firewll_rule "${PORT}"
+        if [ -z "${PROTOCOL}" ]; then
+            remove_firewall_rule "${PORT}" tcp
+            remove_firewall_rule "${PORT}" udp
+        else
+            remove_firewall_rule "${PORT}" "${PROTOCOL}"
+        fi
+        view_firewll_rule
         ;;
       v|view)
-        view_firewll_rule "${PORT}"
-        exit 0
+        view_firewll_rule
         ;;
       *)
-        error "Usage: ./$(basename "$0") [-fw|--firewall] <a|add|r|remove|v|view> <port>"
+        error "Usage: ./$(basename "$0") <-fw|--firewall> <a|add|r|remove|v|view> [port] [tcp|udp]"
         exit 1
         ;;
     esac
+    exit 0
 }
 
 ssrust_service(){
@@ -733,8 +742,7 @@ while [[ $# -ge 1 ]]; do
       ;;
     -fw|--firewall)
       shift
-      config_firewall_manual "$1" "$2"
-      shift 2
+      config_firewall_manual "$1" "$2" "$3"
       ;;
     -v|--version)
       shift
