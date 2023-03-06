@@ -375,22 +375,15 @@ view_firewll_rule(){
 
     if [ "${FIREWALL_MANAGE_TOOL}" = 'firewall-cmd' ]; then
         info "Firewall Manager: \033[32mfirewall-cmd\033[0m"
-        info "All open ports will be listed below including port: ${PORT}"
         firewall-cmd --list-ports --permanent
-        info "If it does not include port: \033[32m${PORT}\033[0m then opening the port fails, please check the firewall settings yourself"
     elif [ "${FIREWALL_MANAGE_TOOL}" = 'ufw' ]; then
         info "Firewall Manager: \033[32mufw\033[0m"
-        info "All open ports will be listed below including port: ${PORT}"
         ufw status
-        info "If it does not include port: \033[32m${PORT}\033[0m then opening the port fails, please check the firewall settings yourself"
     elif [ "${FIREWALL_MANAGE_TOOL}" = 'iptables' ]; then
         info "Firewall Manager: \033[32miptables\033[0m"
-        info "All open ports will be listed below including port: ${PORT}"
         iptables -L INPUT -n --line-numbers
         info "Firewall Manager: \033[32mip6tables\033[0m"
-        info "All open ports will be listed below including port: ${PORT}"
         ip6tables -L INPUT -n --line-numbers
-        info "If it does not include port: \033[32m${PORT}\033[0m then opening the port fails, please check the firewall settings yourself"
     fi
 }
 
